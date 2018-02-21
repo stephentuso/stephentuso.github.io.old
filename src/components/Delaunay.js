@@ -1,11 +1,11 @@
 import React from 'react';
+import styled from 'styled-components'
 import times from 'lodash/fp/times';
 import flow from 'lodash/fp/flow';
 import map from 'lodash/fp/map';
 import flatten from 'lodash/fp/flatten';
 import curry from 'lodash/curry';
 import random from 'lodash/random';
-import constant from 'lodash/fp/constant';
 import triangulate from 'delaunay-triangulate';
 import {
   createVector,
@@ -14,20 +14,17 @@ import {
   subtract as subtractVectors,
   scale as scaleVector,
   length as vectorLength,
-  normalize as normalizeVector,
   inverse as vectorInverse,
   bounceMinX,
   bounceMaxX,
   bounceMinY,
   bounceMaxY, maxLength, setLength, minLength,
 } from '../util/vector'
-import isNotSame from '../util/isNotSame';
 import transform from '../util/transform';
-import transformIf from '../util/transformIf';
 
 const createNode = createVector;
 
-const NODE_COUNT = 300;
+const NODE_COUNT = 100;
 const MAX_SPEED = 0.01;
 const MIN_SPEED = 0.00002;
 const MOUSE_RADIUS = 0.12;
@@ -65,8 +62,8 @@ const edgesForNodes = nodes => flow(
 
 const createAnimatedNode = node => ({
   ...node,
-  speed: scaleVector(MIN_SPEED, randomVector()),
-  acceleration: scaleVector(MIN_SPEED, randomVector()),
+  speed: setLength(random(MIN_SPEED, MAX_SPEED), randomVector()),
+  acceleration: createVector(),
 });
 
 const limitSpeedMinX = node =>
@@ -161,6 +158,14 @@ const drawEdge = curry(({ context, width, height }, edge) => {
   context.stroke();
 });
 
+const drawNode = curry(({ context, width, height }, node) => {
+  const { x, y } = scaleNode(width, height, node);
+  context.beginPath();
+  context.arc(x, y, 5, 0, 2 * Math.PI);
+  context.closePath();
+  context.fill();
+});
+
 const updateCanvasSize = (canvas, pixelRatio) => {
   canvas.width = canvas.scrollWidth * pixelRatio;
   canvas.height = canvas.scrollHeight * pixelRatio;
@@ -190,11 +195,8 @@ const run = curry((instance, canvas) => {
     const nodes = lastNodes.map(updateNode);
 
     const edges = edgesForNodes(nodes);
-    const execDrawEdge = drawEdge({
-      context,
-      width,
-      height,
-    });
+    const execDrawEdge = drawEdge({ context, width, height });
+    const execDrawNode = drawNode({ context, width, height })
 
     context.fillStyle = '#eee';
     context.globalCompositeOperation = 'source-over';
@@ -205,6 +207,7 @@ const run = curry((instance, canvas) => {
     context.globalCompositeOperation = 'destination-out';
 
     edges.forEach(execDrawEdge);
+    nodes.forEach(execDrawNode)
 
     if (instance.unmounted) {
       return;
@@ -215,9 +218,14 @@ const run = curry((instance, canvas) => {
     );
   }
 
-  const nodes = randomNodes(NODE_COUNT).map(createAnimatedNode);
+  const nodes = times(() => createNode(0.5, 0.5), NODE_COUNT).map(createAnimatedNode);
   loop(nodes);
 });
+
+const CanvasContainer = styled.div`
+  width: 100%;
+  height: 100%;
+`;
 
 export default class Delaunay extends React.Component {
 
@@ -268,15 +276,16 @@ export default class Delaunay extends React.Component {
     } = this.props;
 
     return (
-      <canvas
-        className={className}
-        style={{ width: '100%', height: '100%' }}
-        ref={canvas => {
-          this.canvas = canvas;
-          this.addMovementListener();
-          run(this, canvas);
-        }}
-      />
+      <CanvasContainer className={className} >
+        <canvas
+          style={{ width: '100%', height: '100%' }}
+          ref={canvas => {
+            this.canvas = canvas;
+            this.addMovementListener();
+            run(this, canvas);
+          }}
+        />
+      </CanvasContainer>
     );
   }
 };
