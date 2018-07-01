@@ -24,13 +24,11 @@ import transform from '../util/transform';
 const createNode = createVector;
 
 const NODE_COUNT = 100;
-const MAX_SPEED = 0.01;
-const MIN_SPEED = 0.00002;
-const MOUSE_RADIUS = 0.12;
+const MAX_SPEED = 7;
+const MIN_SPEED = 0.1;
+const MOUSE_RADIUS = 50 * window.devicePixelRatio;
 
 const nodeToArray = ({ x, y }) => [x, y];
-
-const scaleNode = (width) => (height) => ({ x, y }) => createNode(x * width, y * height);
 
 const createEdge = (nodeA, nodeB) => [nodeA, nodeB];
 
@@ -53,31 +51,31 @@ const createAnimatedNode = node => ({
   acceleration: createVector(),
 });
 
-const limitSpeedMinX = node =>
-  (node.x < 0)
+const limitSpeedMinX = (min) => node =>
+  (node.x < min)
     ? { ...node, speed: bounceMinX(node.speed) }
     : node;
 
-const limitSpeedMaxX = (width) => (node) =>
-  (node.x > width)
+const limitSpeedMaxX = (max) => (node) =>
+  (node.x > max)
     ? { ...node, speed: bounceMaxX(node.speed) }
     : node;
 
-const limitSpeedMinY = node =>
-  (node.y < 0)
+const limitSpeedMinY = (min) => node =>
+  (node.y < min)
     ? { ...node, speed: bounceMinY(node.speed) }
     : node;
 
-const limitSpeedMaxY = (height) => (node) =>
-  (node.y > height)
+const limitSpeedMaxY = (max) => (node) =>
+  (node.y > max)
     ? { ...node, speed: bounceMaxY(node.speed) }
     : node;
 
-const performBounce = flow(
-  limitSpeedMinX,
-  limitSpeedMaxX(1),
-  limitSpeedMinY,
-  limitSpeedMaxY(1),
+const performBounce = ({ width, height, nodeRadius }) => flow(
+  limitSpeedMinX(nodeRadius),
+  limitSpeedMaxX(width - nodeRadius),
+  limitSpeedMinY(nodeRadius),
+  limitSpeedMaxY(height - nodeRadius),
 );
 
 const updateSpeed = transform(({ acceleration, speed }) => ({
@@ -118,24 +116,21 @@ const updateAcceleration = (mousePosition) => (node) => transform(() => {
   };
 })(node);
 
-const limitPosition = transform(({ x, y }) => ({
-  x: Math.max(Math.min(x, 1), 0),
-  y: Math.max(Math.min(y, 1), 0),
+const limitPosition = ({ width, height, nodeRadius }) => transform(({ x, y }) => ({
+  x: Math.max(Math.min(x, width - nodeRadius), nodeRadius),
+  y: Math.max(Math.min(y, height - nodeRadius), nodeRadius),
 }))
 
-const updateAnimatedNode = (mousePosition) => flow(
+const updateAnimatedNode = (mousePosition, params) => flow(
   updateAcceleration(mousePosition),
   updateSpeed,
   updatePosition,
-  performBounce,
-  limitPosition,
+  performBounce(params),
+  limitPosition(params),
 );
 
 const drawEdge = ({ context, width, height }) => (edge) => {
-  const [a, b] = edge.map(flow(
-    scaleNode(width)(height),
-    nodeToArray
-  ));
+  const [a, b] = edge.map(nodeToArray);
   context.beginPath();
   context.moveTo(...a);
   context.lineTo(...b);
@@ -143,10 +138,10 @@ const drawEdge = ({ context, width, height }) => (edge) => {
   context.stroke();
 };
 
-const drawNode = ({ context, width, height }) => (node) => {
-  const { x, y } = scaleNode(width)(height)(node);
+const drawNode = ({ context, nodeRadius }) => (node) => {
+  const { x, y } = node;
   context.beginPath();
-  context.arc(x, y, 5, 0, 2 * Math.PI);
+  context.arc(x, y, nodeRadius, 0, 2 * Math.PI);
   context.closePath();
   context.fill();
 };
@@ -176,23 +171,25 @@ const run = (instance) => (canvas) => {
 
   const loop = (lastNodes) => {
     const { width, height } = canvas;
-    const updateNode = updateAnimatedNode(instance.mousePosition);
+    const nodeRadius = 5 * window.devicePixelRatio;
+    const params = { width, height, nodeRadius };
+    const updateNode = updateAnimatedNode(instance.mousePosition, params);
     const nodes = lastNodes.map(updateNode);
 
     const edges = edgesForNodes(nodes);
-    const execDrawEdge = drawEdge({ context, width, height });
-    const execDrawNode = drawNode({ context, width, height })
+    const execDrawEdge = drawEdge({ context });
+    const execDrawNode = drawNode({ context, nodeRadius })
 
     context.fillStyle = '#eee';
     context.globalCompositeOperation = 'source-over';
     context.fillRect(0, 0, width, height);
 
     context.strokeStyle = '#000';
-    context.lineWidth = 10;
+    context.lineWidth = 4 * window.devicePixelRatio;
     context.globalCompositeOperation = 'destination-out';
 
     edges.forEach(execDrawEdge);
-    nodes.forEach(execDrawNode)
+    nodes.forEach(execDrawNode);
 
     if (instance.unmounted) {
       return;
@@ -203,7 +200,8 @@ const run = (instance) => (canvas) => {
     );
   }
 
-  const nodes = times(() => createNode(0.5, 0.5), NODE_COUNT).map(createAnimatedNode);
+  const { width, height } = canvas;
+  const nodes = times(() => createNode(width / 2, height / 2), NODE_COUNT).map(createAnimatedNode);
   loop(nodes);
 };
 
@@ -227,23 +225,21 @@ export default class Delaunay extends React.Component {
   removeMovementListener = () => window.removeEventListener('mousemove', this.movementHandler);
 
   movementHandler = (event) => {
-    const { width, height } = this.canvas;
-    const pos = getMousePosition(this.canvas, event);
-    this.mousePosition = scaleNode(1 / width)(1 / height)(pos);
+    this.mousePosition = getMousePosition(this.canvas, event);
   }
 
-  enterHandler = flow(
-    this.addMovementListener,
-    this.removeEnterListener,
-    this.addExitListener,
-  )
+  enterHandler = () => {
+    this.addMovementListener();
+    this.removeEnterListener();
+    this.addExitListener();
+  }
 
-  exitHandler = flow(
-    this.removeMovementListener,
-    this.removeExitListener,
-    this.addEnterListener,
-    () => { this.mousePosition = null }
-  )
+  exitHandler = () => {
+    this.removeMovementListener();
+    this.removeExitListener();
+    this.addEnterListener();
+    this.mousePosition = null;
+  }
 
   constructor() {
     super();
