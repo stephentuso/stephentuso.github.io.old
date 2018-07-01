@@ -27,7 +27,7 @@ jobs:
       - save_cache:
           key: build-{{ .Environment.CIRCLE_SHA1 }}
           paths:
-            - ./dist
+            - ./build
 
   deploy:
     docker:
