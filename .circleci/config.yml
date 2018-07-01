@@ -33,6 +33,7 @@ jobs:
     docker:
       - image: bash
     steps:
+      - checkout
       - restore_cache:
           key: build-{{ .Environment.CIRCLE_SHA1 }}
       - run:
