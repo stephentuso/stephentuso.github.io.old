@@ -31,7 +31,7 @@ jobs:
 
   deploy:
     docker:
-      - image: bash
+      - image: circleci/node:10
     steps:
       - checkout
       - restore_cache:
