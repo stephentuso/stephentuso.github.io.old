@@ -34,7 +34,7 @@ jobs:
       - image: bash
     steps:
       - restore_cache:
-        key: build-{{ .Environment.CIRCLE_SHA1 }}
+          key: build-{{ .Environment.CIRCLE_SHA1 }}
       - run:
           name: Push to gh-pages
           command: ./.circleci/gh-pages-push.sh

@@ -2,7 +2,7 @@
 
 echo -e "\nPublishing to gh-pages..."
 
-cp -Rf dist/ $HOME/dist/
+cp -Rf build/ $HOME/build/
 cp CNAME $HOME/CNAME
 
 cd $HOME
@@ -16,7 +16,7 @@ git clone --quiet --branch=master https://${GH_TOKEN}@github.com/${CIRCLE_PROJEC
 echo -e "\nReplacing files..."
 cd gh-pages
 git rm -rf .
-cp -RTf ../dist/ ./
+cp -RTf ../build/ ./
 cp ../CNAME ./CNAME
 git add -f .
 git commit -m "Update website (circle build #${CIRCLE_BUILD_NUM})"
