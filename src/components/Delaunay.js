@@ -4,7 +4,6 @@ import times from 'lodash/fp/times';
 import flow from 'lodash/fp/flow';
 import map from 'lodash/fp/map';
 import flatten from 'lodash/fp/flatten';
-import curry from 'lodash/curry';
 import random from 'lodash/random';
 import triangulate from 'delaunay-triangulate';
 import {
@@ -29,23 +28,11 @@ const MAX_SPEED = 0.01;
 const MIN_SPEED = 0.00002;
 const MOUSE_RADIUS = 0.12;
 
-const randomNodes = times(
-  () => createNode(random(0, 1, true), random(0, 1, true))
-);
-
-const nodesEqual = curry((a, b) => (
-  a.x === b.x && a.y === b.y
-));
-
 const nodeToArray = ({ x, y }) => [x, y];
 
-const scaleNode = curry((width, height, { x, y }) => createNode(x * width, y * height));
+const scaleNode = (width) => (height) => ({ x, y }) => createNode(x * width, y * height);
 
 const createEdge = (nodeA, nodeB) => [nodeA, nodeB];
-
-const edgesEqual = curry((a, b) => (
-  nodesEqual(a[0], b[0]) && nodesEqual(a[1], b[1])
-));
 
 const edgesForTriangle = nodes => ([a, b, c]) => ([
   createEdge(nodes[a], nodes[b]),
@@ -62,7 +49,7 @@ const edgesForNodes = nodes => flow(
 
 const createAnimatedNode = node => ({
   ...node,
-  speed: setLength(random(MIN_SPEED, MAX_SPEED), randomVector()),
+  speed: setLength(random(MIN_SPEED, MAX_SPEED))(randomVector()),
   acceleration: createVector(),
 });
 
@@ -71,29 +58,27 @@ const limitSpeedMinX = node =>
     ? { ...node, speed: bounceMinX(node.speed) }
     : node;
 
-const limitSpeedMaxX = curry((width, node) =>
+const limitSpeedMaxX = (width) => (node) =>
   (node.x > width)
     ? { ...node, speed: bounceMaxX(node.speed) }
-    : node
-);
+    : node;
 
 const limitSpeedMinY = node =>
   (node.y < 0)
     ? { ...node, speed: bounceMinY(node.speed) }
     : node;
 
-const limitSpeedMaxY = curry((height, node) =>
+const limitSpeedMaxY = (height) => (node) =>
   (node.y > height)
     ? { ...node, speed: bounceMaxY(node.speed) }
-    : node
-);
+    : node;
 
-const performBounce = node => flow(
+const performBounce = flow(
   limitSpeedMinX,
   limitSpeedMaxX(1),
   limitSpeedMinY,
   limitSpeedMaxY(1),
-)(node);
+);
 
 const updateSpeed = transform(({ acceleration, speed }) => ({
   speed: flow(
@@ -104,10 +89,10 @@ const updateSpeed = transform(({ acceleration, speed }) => ({
 }));
 
 const updatePosition = transform(({ x, y, speed }) => ({
-  ...addVectors({ x, y }, speed),
+  ...addVectors({ x, y })(speed),
 }));
 
-const updateAcceleration = curry((mousePosition, node) => transform(() => {
+const updateAcceleration = (mousePosition) => (node) => transform(() => {
   const defaultAcceleration = flow(
     vectorInverse,
     scaleVector(0.01)
@@ -117,7 +102,7 @@ const updateAcceleration = curry((mousePosition, node) => transform(() => {
     return { acceleration: defaultAcceleration }
   }
 
-  const mouseVector = subtractVectors(mousePosition, node);
+  const mouseVector = subtractVectors(mousePosition)(node);
   const length = vectorLength(mouseVector);
   const radius = MOUSE_RADIUS;
   if (length > radius) {
@@ -131,24 +116,24 @@ const updateAcceleration = curry((mousePosition, node) => transform(() => {
   return {
     acceleration,
   };
-})(node));
+})(node);
 
 const limitPosition = transform(({ x, y }) => ({
   x: Math.max(Math.min(x, 1), 0),
   y: Math.max(Math.min(y, 1), 0),
 }))
 
-const updateAnimatedNode = curry((mousePosition, node) => flow(
+const updateAnimatedNode = (mousePosition) => flow(
   updateAcceleration(mousePosition),
   updateSpeed,
   updatePosition,
   performBounce,
   limitPosition,
-)(node));
+);
 
-const drawEdge = curry(({ context, width, height }, edge) => {
+const drawEdge = ({ context, width, height }) => (edge) => {
   const [a, b] = edge.map(flow(
-    scaleNode(width, height),
+    scaleNode(width)(height),
     nodeToArray
   ));
   context.beginPath();
@@ -156,15 +141,15 @@ const drawEdge = curry(({ context, width, height }, edge) => {
   context.lineTo(...b);
   context.closePath();
   context.stroke();
-});
+};
 
-const drawNode = curry(({ context, width, height }, node) => {
-  const { x, y } = scaleNode(width, height, node);
+const drawNode = ({ context, width, height }) => (node) => {
+  const { x, y } = scaleNode(width)(height)(node);
   context.beginPath();
   context.arc(x, y, 5, 0, 2 * Math.PI);
   context.closePath();
   context.fill();
-});
+};
 
 const updateCanvasSize = (canvas, pixelRatio) => {
   canvas.width = canvas.scrollWidth * pixelRatio;
@@ -182,7 +167,7 @@ const getMousePosition = (canvas, event) => {
   };
 }
 
-const run = curry((instance, canvas) => {
+const run = (instance) => (canvas) => {
   const resize = () => updateCanvasSize(canvas, window.devicePixelRatio);
   window.addEventListener('resize', resize, false);
   resize();
@@ -220,7 +205,7 @@ const run = curry((instance, canvas) => {
 
   const nodes = times(() => createNode(0.5, 0.5), NODE_COUNT).map(createAnimatedNode);
   loop(nodes);
-});
+};
 
 const CanvasContainer = styled.div`
   width: 100%;
@@ -244,7 +229,7 @@ export default class Delaunay extends React.Component {
   movementHandler = (event) => {
     const { width, height } = this.canvas;
     const pos = getMousePosition(this.canvas, event);
-    this.mousePosition = scaleNode(1 / width, 1 / height, pos);
+    this.mousePosition = scaleNode(1 / width)(1 / height)(pos);
   }
 
   enterHandler = flow(
@@ -282,7 +267,7 @@ export default class Delaunay extends React.Component {
           ref={canvas => {
             this.canvas = canvas;
             this.addMovementListener();
-            run(this, canvas);
+            run(this)(canvas);
           }}
         />
       </CanvasContainer>

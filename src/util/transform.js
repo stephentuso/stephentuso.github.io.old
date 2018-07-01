@@ -1,8 +1,6 @@
-import curry from 'lodash/curry';
-
-const transform = curry((transformer, obj) => ({
+const transform = (transformer) => (obj) => ({
   ...obj,
   ...transformer(obj),
-}));
+});
 
 export default transform;

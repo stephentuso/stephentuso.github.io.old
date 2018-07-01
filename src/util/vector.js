@@ -1,5 +1,4 @@
 import random from 'lodash/random';
-import curry from 'lodash/curry';
 import flow from 'lodash/fp/flow';
 
 export const createVector = (x = 0, y = 0) => ({ x, y });
@@ -9,30 +8,28 @@ export const randomVector = () => createVector(
   random(-1, 1, true),
 );
 
-export const add = curry((b, a) => createVector(a.x + b.x, a.y + b.y));
+export const add = (b) => (a) => createVector(a.x + b.x, a.y + b.y);
 
-export const subtract = curry((b, a) => createVector(a.x - b.x, a.y - b.y));
+export const subtract = (b) => (a) => createVector(a.x - b.x, a.y - b.y);
 
-export const scale = curry((s, { x, y }) => createVector(x * s, y * s));
+export const scale = (s) => ({ x, y }) => createVector(x * s, y * s);
 
 export const length = ({ x, y }) => Math.sqrt(x * x + y * y);
 
-export const setLength = curry((length, vector) => flow(
+export const setLength = (length) => flow(
   normalize,
   scale(length),
-)(vector));
+);
 
-export const maxLength = curry((max, vector) =>
+export const maxLength = (max) => (vector) =>
   (length(vector) > max)
-    ? setLength(max, vector)
-    : vector
-);
+    ? setLength(max)(vector)
+    : vector;
 
-export const minLength = curry((min, vector) =>
+export const minLength = (min) => (vector) =>
   (length(vector) < min)
-    ? setLength(min, vector)
-    : vector
-);
+    ? setLength(min)(vector)
+    : vector;
 
 export const normalize = ({ x, y }) => {
   const l = length({ x, y }) || 1;
