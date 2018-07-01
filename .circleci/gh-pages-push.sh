@@ -4,6 +4,7 @@ echo -e "\nPublishing to gh-pages..."
 
 cp -Rf build/ $HOME/build/
 cp CNAME $HOME/CNAME
+cp -Rf .circleci/ $HOME/.circleci/
 
 cd $HOME
 
@@ -18,6 +19,7 @@ cd gh-pages
 git rm -rf .
 cp -RTf ../build/ ./
 cp ../CNAME ./CNAME
+cp -RTf ../.circleci ./.circleci
 git add -f .
 git commit -m "Update website (circle build #${CIRCLE_BUILD_NUM})"
 
