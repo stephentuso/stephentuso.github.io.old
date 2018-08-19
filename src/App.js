@@ -7,7 +7,7 @@ import faTwitter from '@fortawesome/fontawesome-free-brands/faTwitter';
 import wrap from './util/wrap';
 import flow from 'lodash/fp/flow';
 
-const smallMargin = '24px';
+const smallMargin = '16px';
 const margin = '48px';
 const textColor = '#ff014f';
 const gradientStart = '#ffaf00';
@@ -58,9 +58,10 @@ const WithMargin = styled.div`
 `;
 
 const Name = styled.h1`
-  letter-spacing: 0.4em;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
   margin-bottom: ${smallMargin};
+  font-size: 1.6rem;
 `;
 
 const Title = styled.div`
