@@ -100,7 +100,7 @@ export default () => (
       <Animation />
       <Name>Stephen Tuso</Name>
       <Title>Software Developer</Title>
-      <Work href="https://digitalrelab.com">@digitalrelab</Work>
+      <Work href="https://starchive.io">@starchive</Work>
       <Links>
         <Link href="https://github.com/stephentuso" icon={faGithub} />
         <Link href="https://twitter.com/s_tuso" icon={faTwitter} />
